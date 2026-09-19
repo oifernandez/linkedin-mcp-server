@@ -26,6 +26,7 @@ from linkedin_mcp_server.scraping.person import PersonScraper
 from linkedin_mcp_server.scraping.posts import PostSearch
 from linkedin_mcp_server.scraping.profile_page import ProfilePageReader
 from linkedin_mcp_server.scraping.session import ScrapingSession
+from linkedin_mcp_server.scraping.thread_reply import ThreadReplier
 from linkedin_mcp_server.scraping.text import (
     strip_conversation_chrome as strip_conversation_chrome,
     strip_linkedin_noise as strip_linkedin_noise,
@@ -45,6 +46,7 @@ class LinkedInExtractor:
         content = PageContentReader(session)
         capture = SectionCapture(session, navigator, content)
         message_sender = MessageSender(session, navigator)
+        thread_replier = ThreadReplier(session, navigator)
         profile_page = ProfilePageReader(
             session,
             lambda: message_sender._read_profile_message_target(),
@@ -55,6 +57,7 @@ class LinkedInExtractor:
         self._capture = capture
         self._feed = FeedScraper(session, navigator, content)
         self._message_sender = message_sender
+        self._thread_replier = thread_replier
         self._person = person
         self._company = CompanyScraper(session, capture)
         self._connection = ConnectionActions(
@@ -255,4 +258,18 @@ class LinkedInExtractor:
             message,
             confirm_send=confirm_send,
             profile_urn=profile_urn,
+        )
+
+    async def reply_to_thread(
+        self,
+        thread_id: str,
+        message: str,
+        *,
+        confirm_send: bool,
+    ) -> dict[str, Any]:
+        """Reply inside an existing messaging thread with explicit confirmation gating."""
+        return await self._thread_replier.reply_to_thread(
+            thread_id,
+            message,
+            confirm_send=confirm_send,
         )

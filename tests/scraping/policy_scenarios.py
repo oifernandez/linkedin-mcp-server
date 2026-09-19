@@ -688,6 +688,33 @@ async def _messaging_dry_run_scenario() -> dict[str, Any]:
     )
 
 
+async def _reply_to_thread_refusal_scenario() -> dict[str, Any]:
+    """A reply with a control character is refused before any page is touched."""
+    recorder = TraceRecorder("reply_to_thread__invalid_message", _COMMON_ALLOWED)
+    clock = FakeClock(recorder)
+    page = ScriptedPage(recorder, url="about:blank")
+    extractor = _extractor(page)
+    async with boundaries(recorder, clock):
+        with recorder.context("reply_to_thread", "message"):
+            result = await extractor.reply_to_thread(
+                "2-YWJjXzEwMA==",
+                "Hola\tmundo",
+                confirm_send=True,
+            )
+    page.assert_clean()
+    return recorder.trace(
+        {
+            "method": "reply_to_thread",
+            "arguments": {
+                "thread_id": "2-YWJjXzEwMA==",
+                "message": "Hola\\tmundo",
+                "confirm_send": True,
+            },
+        },
+        result,
+    )
+
+
 async def _occupied_message_scenario(*, restored_during_write: bool) -> dict[str, Any]:
     suffix = "restored_during_write" if restored_during_write else "existing_draft"
     recorder = TraceRecorder(f"send_message__{suffix}", _COMMON_ALLOWED)
@@ -1027,6 +1054,7 @@ TOOL_FACADE_METHODS = {
     "get_my_profile",
     "get_saved_jobs",
     "get_sidebar_profiles",
+    "reply_to_thread",
     "scrape_company",
     "scrape_job",
     "scrape_person",
@@ -1074,6 +1102,7 @@ async def build_policy_traces() -> dict[str, dict[str, Any]]:
         ),
         "message-target-unresolved.json": await _message_target_scenario("unresolved"),
         "message-dry-run.json": await _messaging_dry_run_scenario(),
+        "reply-to-thread-invalid-message.json": await _reply_to_thread_refusal_scenario(),
         "message-composer-occupied.json": await _occupied_message_scenario(
             restored_during_write=False
         ),
