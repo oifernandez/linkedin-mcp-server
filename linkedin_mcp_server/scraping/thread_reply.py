@@ -34,6 +34,11 @@ _COMPOSER_TIMEOUT_MS = 15_000
 _SUBMIT_READY_TIMEOUT_MS = 5_000
 _CONFIRMATION_TIMEOUT_MS = 20_000
 _PREVIEW_DIR = Path.home() / ".linkedin-mcp" / "reply-previews"
+_DIALOG_SELECTOR = '[role="dialog"], [role="alertdialog"], .artdeco-modal'
+_CONTACT_PROMPT_PATTERN = re.compile(
+    r"informaci[oó]n de contacto|contact (?:info|details)", re.IGNORECASE
+)
+_DECLINE_PATTERN = re.compile(r"^no\b", re.IGNORECASE)
 
 
 def normalize_reply_message(message: str) -> str:
@@ -80,6 +85,7 @@ def thread_reply_result(
     preview_path: str | None = None,
     sent: bool = False,
     retry_safe: bool = True,
+    diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Structured response for ``reply_to_thread``.
 
@@ -99,6 +105,8 @@ def thread_reply_result(
         result["composer_text"] = composer_text
     if preview_path is not None:
         result["preview_path"] = preview_path
+    if diagnostics is not None:
+        result["diagnostics"] = diagnostics
     return result
 
 
@@ -108,6 +116,20 @@ def _words(text: str) -> str:
 
 def _non_empty_lines(text: str) -> list[str]:
     return [line.strip() for line in text.split("\n") if line.strip()]
+
+
+def is_contact_prompt(text: str) -> bool:
+    """True for LinkedIn's dialog asking to share email and phone with the sender."""
+    return bool(_CONTACT_PROMPT_PATTERN.search(text))
+
+
+def pick_decline_label(labels: list[str]) -> str | None:
+    """The dialog button that answers without sharing anything, or None."""
+    for label in labels:
+        cleaned = _words(label)
+        if _DECLINE_PATTERN.match(cleaned):
+            return cleaned
+    return None
 
 
 def composer_matches(expected: str, composer_text: str) -> bool:
@@ -218,17 +240,82 @@ class ThreadReplier:
         except Exception:
             return ""
 
-    async def _wait_for_sent(self, composer: Any, message: str) -> bool:
-        """The reply is sent once it shows in the thread and the composer is empty."""
+    async def _body_text(self) -> str:
+        try:
+            return await self._page.evaluate("() => document.body.innerText")
+        except Exception:
+            return ""
+
+    def _contact_prompt_locator(self) -> Any:
+        return (
+            self._page.locator(_DIALOG_SELECTOR)
+            .filter(has_text=_CONTACT_PROMPT_PATTERN)
+            .first
+        )
+
+    async def _contact_prompt(self) -> dict[str, Any] | None:
+        """The visible contact-sharing dialog with its button labels, or None."""
+        dialog = self._contact_prompt_locator()
+        try:
+            if not await dialog.is_visible():
+                return None
+            text = _words(await dialog.inner_text())
+            labels = await dialog.locator("button").all_inner_texts()
+        except Exception:
+            logger.debug("Could not inspect the contact prompt", exc_info=True)
+            return None
+        return {
+            "text": text[:200],
+            "buttons": [_words(label) for label in labels if _words(label)],
+        }
+
+    async def _decline_contact_prompt(self, prompt: dict[str, Any]) -> bool:
+        """Answer the contact-sharing dialog without sharing; True when clicked."""
+        label = pick_decline_label(prompt["buttons"])
+        if label is None:
+            return False
+        dialog = self._contact_prompt_locator()
+        try:
+            await dialog.get_by_role("button", name=label, exact=True).first.click()
+        except Exception:
+            logger.debug("Could not decline the contact prompt", exc_info=True)
+            return False
+        return True
+
+    async def _observe_submission(
+        self, composer: Any, button: Any, message: str
+    ) -> dict[str, Any]:
+        """Watch the page after the click until the reply shows, or say why not.
+
+        LinkedIn sometimes answers the click with a dialog asking to share the
+        sender's email and phone; it is declined and the wait starts again.
+        """
         expected = _words(message)
         deadline = time.monotonic() + _CONFIRMATION_TIMEOUT_MS / 1_000
+        outcome: dict[str, Any] = {"sent": False, "contact_prompt": None}
         while True:
             composer_text = await self._read_composer(composer)
             main_text = _words(await self._main_text())
             if not composer_text.strip() and expected in main_text:
-                return True
+                outcome["sent"] = True
+                return outcome
+            if outcome["contact_prompt"] is None:
+                prompt = await self._contact_prompt()
+                if prompt is not None:
+                    declined = await self._decline_contact_prompt(prompt)
+                    outcome["contact_prompt"] = {**prompt, "declined": declined}
+                    if declined:
+                        deadline = time.monotonic() + _CONFIRMATION_TIMEOUT_MS / 1_000
             if time.monotonic() >= deadline:
-                return False
+                outcome["composer_text_after"] = composer_text
+                outcome["contact_prompt_in_page"] = is_contact_prompt(
+                    await self._body_text()
+                )
+                try:
+                    outcome["submit_enabled"] = await button.is_enabled()
+                except Exception:
+                    outcome["submit_enabled"] = None
+                return outcome
             await asyncio.sleep(0.5)
 
     async def reply_to_thread(
@@ -328,27 +415,65 @@ class ThreadReplier:
             )
 
         await button.click()
-        sent = await self._wait_for_sent(composer, message)
+        outcome = await self._observe_submission(composer, button, message)
         await self._session.check_rate_limit()
-        if sent:
+        prompt = outcome["contact_prompt"]
+        diagnostics = {key: value for key, value in outcome.items() if key != "sent"}
+        if outcome["sent"]:
+            note = (
+                " LinkedIn asked to share contact details first; declined."
+                if prompt and prompt["declined"]
+                else ""
+            )
             return thread_reply_result(
                 self._page.url,
                 thread_id,
                 "sent",
-                "Reply submitted and observed in the thread.",
+                "Reply submitted and observed in the thread." + note,
                 composer_text=composer_text,
                 preview_path=preview_path,
                 sent=True,
                 retry_safe=False,
+                diagnostics=diagnostics,
+            )
+        if prompt and not prompt["declined"]:
+            reason = (
+                "LinkedIn opened a contact-sharing dialog after submit and no "
+                f"decline button was found among {prompt['buttons']}; the reply "
+                "is held behind that dialog. Read the thread before retrying."
+            )
+        elif prompt:
+            reason = (
+                "LinkedIn opened a contact-sharing dialog after submit; it was "
+                "declined but the reply was still not observed in the thread "
+                "within the timeout. Read the thread before retrying."
+            )
+        elif composer_matches(message, outcome.get("composer_text_after", "")):
+            await self._clear_composer(composer)
+            return thread_reply_result(
+                self._page.url,
+                thread_id,
+                "submit_ignored",
+                "Submit was clicked but the composer still holds the whole "
+                "text and nothing appeared in the thread; the composer was "
+                "cleared. Nothing was sent.",
+                composer_text=composer_text,
+                preview_path=preview_path,
+                diagnostics=diagnostics,
+            )
+        else:
+            reason = (
+                "Submit was clicked but the reply was not observed in the thread "
+                "within the timeout. Read the thread before retrying."
             )
         return thread_reply_result(
             self._page.url,
             thread_id,
             "unconfirmed",
-            "Submit was clicked but the reply was not observed in the thread "
-            "within the timeout. Read the thread before retrying.",
+            reason,
             composer_text=composer_text,
             preview_path=preview_path,
             sent=False,
             retry_safe=False,
+            diagnostics=diagnostics,
         )
