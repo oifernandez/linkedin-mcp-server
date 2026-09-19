@@ -40,6 +40,7 @@ def _make_mock_extractor(scrape_result: dict) -> MagicMock:
     mock.get_conversation = AsyncMock(return_value=scrape_result)
     mock.search_conversations = AsyncMock(return_value=scrape_result)
     mock.send_message = AsyncMock(return_value=scrape_result)
+    mock.reply_to_thread = AsyncMock(return_value=scrape_result)
     mock.get_my_profile = AsyncMock(return_value=scrape_result)
     mock.search_companies = AsyncMock(return_value=scrape_result)
     mock.search_posts = AsyncMock(return_value=scrape_result)
@@ -990,6 +991,51 @@ class TestMessagingTools:
         mock_extractor.send_message.assert_awaited_once_with(
             "testuser", "Hello!", confirm_send=True, profile_urn=None
         )
+
+    async def test_reply_to_thread_success(self, mock_context):
+        expected = {
+            "url": "https://www.linkedin.com/messaging/thread/2-abc/",
+            "thread_id": "2-abc",
+            "status": "sent",
+            "message": "Reply submitted and observed in the thread.",
+            "sent": True,
+            "retry_safe": False,
+        }
+        mock_extractor = _make_mock_extractor(expected)
+
+        from linkedin_mcp_server.tools.messaging import register_messaging_tools
+
+        mcp = FastMCP("test")
+        register_messaging_tools(mcp)
+
+        tool_fn = await get_tool_fn(mcp, "reply_to_thread")
+        body = "Hola Laura, gracias.\n\nUn saludo,\nÓscar"
+        result = await tool_fn(
+            "2-abc", body, True, mock_context, extractor=mock_extractor
+        )
+
+        assert result["status"] == "sent"
+        assert result["sent"] is True
+        mock_extractor.reply_to_thread.assert_awaited_once_with(
+            "2-abc", body, confirm_send=True
+        )
+
+    async def test_reply_to_thread_refuses_control_characters(self, mock_context):
+        mock_extractor = _make_mock_extractor({})
+
+        from linkedin_mcp_server.tools.messaging import register_messaging_tools
+
+        mcp = FastMCP("test")
+        register_messaging_tools(mcp)
+
+        tool_fn = await get_tool_fn(mcp, "reply_to_thread")
+        result = await tool_fn(
+            "2-abc", "Hola\tmundo", True, mock_context, extractor=mock_extractor
+        )
+
+        assert result["status"] == "invalid_message"
+        assert result["sent"] is False
+        mock_extractor.reply_to_thread.assert_not_awaited()
 
     async def test_send_message_description_explains_connection_handoff(self):
         from linkedin_mcp_server.tools.messaging import register_messaging_tools

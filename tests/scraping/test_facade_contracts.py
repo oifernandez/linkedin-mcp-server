@@ -53,6 +53,7 @@ TOOL_DELEGATES = {
     "get_person_profile": "scrape_person",
     "get_saved_jobs": "get_saved_jobs",
     "get_sidebar_profiles": "get_sidebar_profiles",
+    "reply_to_thread": "reply_to_thread",
     "search_companies": "search_companies",
     "search_conversations": "search_conversations",
     "search_jobs": "search_jobs",
@@ -97,6 +98,7 @@ async def test_constructor_export_and_dependency_use_the_same_facade(monkeypatch
         "_message_sender",
         "_person",
         "_posts",
+        "_thread_replier",
     }
     assert set(vars(extractor)) == expected_state
     assert type(constructed) is LinkedInExtractor

@@ -40,6 +40,7 @@ a page-owning collaborator.
 | `search_urls` | `CONTENT_DATE_POSTED_MAP`, `EXPERIENCE_LEVEL_MAP`, `JOB_DATE_POSTED_MAP`, `JOB_TYPE_MAP`, `NETWORK_TOKENS`, `SORT_BY_MAP`, `WORK_TYPE_MAP`, `build_company_search_url()`, `build_content_search_url()`, `build_job_search_url()`, `build_people_search_url()` | `browser-free` |
 | `session` | `NAV_DELAY`, `ScrapingSession` | `page-owning` |
 | `text` | `DETAIL_CAPTURE_EN_US`, `DetailCaptureTextTable`, `SIDEBAR_CHROME_EN`, `SidebarChromeTable`, `filter_linkedin_noise_lines()`, `strip_conversation_chrome()`, `strip_linkedin_noise()`, `truncate_linkedin_noise()` | `browser-free` |
+| `thread_reply` | `ThreadReplier`, `composer_matches()`, `normalize_reply_message()`, `refuse_an_invalid_reply()`, `thread_reply_result()` | `browser-free` |
 
 ## Internal import graph
 
@@ -51,7 +52,7 @@ a page-owning collaborator.
 - `content` -> `session`, `text`
 - `contracts` -> `identifiers`, `link_metadata`
 - `conversations` -> `content`, `identifiers`, `link_metadata`, `navigation`, `profile_page`, `session`, `text`
-- `extractor` -> `capture`, `company`, `connection_actions`, `content`, `contracts`, `conversations`, `feed`, `job_pages`, `jobs`, `message_sender`, `navigation`, `person`, `posts`, `profile_page`, `session`, `text`
+- `extractor` -> `capture`, `company`, `connection_actions`, `content`, `contracts`, `conversations`, `feed`, `job_pages`, `jobs`, `message_sender`, `navigation`, `person`, `posts`, `profile_page`, `session`, `text`, `thread_reply`
 - `feed` -> `content`, `contracts`, `feed_payload`, `navigation`, `session`, `text`
 - `feed_payload` -> `link_metadata`
 - `fields` -> `capture`
@@ -68,6 +69,7 @@ a page-owning collaborator.
 - `search_urls` -> `contracts`
 - `session` -> _(none)_
 - `text` -> _(none)_
+- `thread_reply` -> `identifiers`, `navigation`, `session`
 
 ## `LinkedInExtractor` public coroutine surface
 
@@ -82,6 +84,7 @@ a page-owning collaborator.
 - `get_page_text`
 - `get_saved_jobs`
 - `get_sidebar_profiles`
+- `reply_to_thread`
 - `scrape_company`
 - `scrape_job`
 - `scrape_person`
@@ -104,6 +107,7 @@ a page-owning collaborator.
 - `_message_sender`
 - `_person`
 - `_posts`
+- `_thread_replier`
 
 ## Dependency-direction violations
 

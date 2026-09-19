@@ -41,6 +41,7 @@ PUBLIC_SIGNATURES = {
     "get_page_text": "(self) -> 'str'",
     "get_saved_jobs": "(self, max_pages: 'int' = 3) -> 'dict[str, Any]'",
     "get_sidebar_profiles": "(self, username: 'str') -> 'dict[str, Any]'",
+    "reply_to_thread": "(self, thread_id: 'str', message: 'str', *, confirm_send: 'bool') -> 'dict[str, Any]'",
     "scrape_company": "(self, company_name: 'str', requested: 'set[str]', callbacks: 'ProgressCallback | None' = None) -> 'dict[str, Any]'",
     "scrape_job": "(self, job_id: 'str') -> 'dict[str, Any]'",
     "scrape_person": "(self, username: 'str', requested: 'set[str]', callbacks: 'ProgressCallback | None' = None, max_scrolls: 'int | None' = None, *, main_profile_already_loaded: 'bool' = False, allow_self_alias: 'bool' = False) -> 'dict[str, Any]'",
@@ -64,6 +65,7 @@ DELEGATES = {
     "get_page_text": ("_content", "get_page_text"),
     "get_saved_jobs": ("_jobs", "get_saved_jobs"),
     "get_sidebar_profiles": ("_person", "get_sidebar_profiles"),
+    "reply_to_thread": ("_thread_replier", "reply_to_thread"),
     "scrape_company": ("_company", "scrape_company"),
     "scrape_job": ("_jobs", "scrape_job"),
     "scrape_person": ("_person", "scrape_person"),
@@ -87,6 +89,7 @@ DELEGATE_CALLS = {
     "get_page_text": "self._content.get_page_text()",
     "get_saved_jobs": "self._jobs.get_saved_jobs(max_pages)",
     "get_sidebar_profiles": "self._person.get_sidebar_profiles(username)",
+    "reply_to_thread": "self._thread_replier.reply_to_thread(thread_id, message, confirm_send=confirm_send)",
     "scrape_company": "self._company.scrape_company(company_name, requested, callbacks)",
     "scrape_job": "self._jobs.scrape_job(job_id)",
     "scrape_person": "self._person.scrape_person(username, requested, callbacks, max_scrolls, main_profile_already_loaded=main_profile_already_loaded, allow_self_alias=allow_self_alias)",
@@ -109,6 +112,7 @@ FACADE_STATE = {
     "_message_sender",
     "_person",
     "_posts",
+    "_thread_replier",
 }
 
 PERMANENT_ALIASES = {

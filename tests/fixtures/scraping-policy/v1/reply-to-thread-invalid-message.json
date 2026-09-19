@@ -1,0 +1,21 @@
+{
+  "call": {
+    "arguments": {
+      "confirm_send": true,
+      "message": "Hola\\tmundo",
+      "thread_id": "2-YWJjXzEwMA=="
+    },
+    "method": "reply_to_thread"
+  },
+  "events": [],
+  "result": {
+    "message": "Message must not contain control characters other than line breaks.",
+    "retry_safe": true,
+    "sent": false,
+    "status": "invalid_message",
+    "thread_id": "2-YWJjXzEwMA==",
+    "url": "https://www.linkedin.com/messaging/thread/2-YWJjXzEwMA%3D%3D/"
+  },
+  "scenario": "reply_to_thread__invalid_message",
+  "schema_version": 1
+}

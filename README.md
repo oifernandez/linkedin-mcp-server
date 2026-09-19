@@ -50,6 +50,7 @@ An MCP server that connects AI assistants like Claude to LinkedIn through your o
 | `get_conversation` | Read a specific messaging conversation by username or thread ID |
 | `search_conversations` | Search messages by keyword |
 | `send_message` | Compose/send a new message to a LinkedIn user (requires confirmation; profile-based targeting may open a separate DM instead of replying in an existing thread — see #483) |
+| `reply_to_thread` | Reply inside an existing messaging thread (InMail included) by `thread_id`, multi-line, with confirmation; `confirm_send=False` is a verified dry run |
 | `get_company_profile` | Extract company information with explicit section selection (posts, jobs); about-section references may include a `company_urn` entry carrying the numeric id used by LinkedIn's people-search `currentCompany` URL facet |
 | `get_company_posts` | Get recent posts from a company's LinkedIn feed |
 | `search_companies` | Search for companies on LinkedIn by keywords |

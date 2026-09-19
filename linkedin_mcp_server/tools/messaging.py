@@ -1,7 +1,8 @@
 """
 LinkedIn messaging tools.
 
-Provides inbox listing, conversation reading, message search, and sending.
+Provides inbox listing, conversation reading, message search, sending, and
+replying inside an existing thread.
 """
 
 import logging
@@ -21,6 +22,7 @@ from linkedin_mcp_server.scraping.contracts import (
     SEND_INTERRUPTED_WARNING,
     refuse_an_invalid_message,
 )
+from linkedin_mcp_server.scraping.thread_reply import refuse_an_invalid_reply
 
 logger = logging.getLogger(__name__)
 
@@ -328,3 +330,86 @@ def register_messaging_tools(
                 raise_tool_error(relogin_exc, "send_message")
         except Exception as e:
             raise_tool_error(e, "send_message")  # NoReturn
+
+    @mcp.tool(
+        timeout=tool_timeout,
+        title="Reply To Thread",
+        annotations={"destructiveHint": True, "openWorldHint": True},
+        tags={"messaging", "actions"},
+        exclude_args=["extractor"],
+    )
+    async def reply_to_thread(
+        thread_id: str,
+        message: str,
+        confirm_send: bool,
+        ctx: Context,
+        extractor: Any | None = None,
+    ) -> dict[str, Any]:
+        """
+        Reply inside an existing messaging thread, InMail included.
+
+        This is the reply path that send_message is not: it opens
+        /messaging/thread/<thread_id>/ and types into that thread's own
+        composer, so the reply lands under the message it answers instead of
+        starting a separate conversation. Take thread_id from the url or the
+        references returned by get_conversation or search_conversations.
+
+        The message may span several lines; each line break is typed as
+        Shift+Enter so LinkedIn keeps the paragraphs inside one message. Other
+        control characters are rejected. The text is read back from the
+        composer and compared with the request before anything is submitted;
+        on a mismatch nothing is sent.
+
+        Args:
+            thread_id: LinkedIn messaging thread ID (the segment after /messaging/thread/)
+            message: Reply text; multi-line allowed
+            confirm_send: False types, verifies, screenshots and clears the
+                composer without sending (dry run); True sends
+            ctx: FastMCP context for progress reporting
+
+        Returns:
+            Dict with url, thread_id, status, message, composer_text,
+            preview_path, sent and retry_safe. ``sent`` is true only after the
+            reply was seen in the thread and the composer went empty.
+            ``retry_safe`` is false from the moment the submit button was
+            clicked; calling again while it is false can send the reply twice.
+        """
+        try:
+            refusal = refuse_an_invalid_reply(thread_id, message)
+            if refusal is not None:
+                return refusal
+            extractor = extractor or await get_ready_extractor(
+                ctx, tool_name="reply_to_thread"
+            )
+            logger.info(
+                "Replying in thread %s (confirm_send=%s)", thread_id, confirm_send
+            )
+
+            await ctx.report_progress(
+                progress=0, total=100, message="Replying in thread"
+            )
+
+            result = await extractor.reply_to_thread(
+                thread_id,
+                message,
+                confirm_send=confirm_send,
+            )
+
+            try:
+                await ctx.report_progress(progress=100, total=100, message="Complete")
+            except BaseException:
+                # Same contract as send_message: a deadline landing on the
+                # last await must not hide a reply that already left.
+                if result.get("retry_safe") is False:
+                    logger.warning(SEND_INTERRUPTED_WARNING)
+                raise
+
+            return result
+
+        except AuthenticationError as e:
+            try:
+                await handle_auth_error(e, ctx)
+            except Exception as relogin_exc:
+                raise_tool_error(relogin_exc, "reply_to_thread")
+        except Exception as e:
+            raise_tool_error(e, "reply_to_thread")  # NoReturn
