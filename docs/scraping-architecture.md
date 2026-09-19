@@ -40,7 +40,7 @@ a page-owning collaborator.
 | `search_urls` | `CONTENT_DATE_POSTED_MAP`, `EXPERIENCE_LEVEL_MAP`, `JOB_DATE_POSTED_MAP`, `JOB_TYPE_MAP`, `NETWORK_TOKENS`, `SORT_BY_MAP`, `WORK_TYPE_MAP`, `build_company_search_url()`, `build_content_search_url()`, `build_job_search_url()`, `build_people_search_url()` | `browser-free` |
 | `session` | `NAV_DELAY`, `ScrapingSession` | `page-owning` |
 | `text` | `DETAIL_CAPTURE_EN_US`, `DetailCaptureTextTable`, `SIDEBAR_CHROME_EN`, `SidebarChromeTable`, `filter_linkedin_noise_lines()`, `strip_conversation_chrome()`, `strip_linkedin_noise()`, `truncate_linkedin_noise()` | `browser-free` |
-| `thread_reply` | `ThreadReplier`, `composer_matches()`, `normalize_reply_message()`, `refuse_an_invalid_reply()`, `thread_reply_result()` | `browser-free` |
+| `thread_reply` | `ThreadReplier`, `composer_matches()`, `is_contact_prompt()`, `normalize_reply_message()`, `pick_decline_label()`, `refuse_an_invalid_reply()`, `thread_reply_result()` | `browser-free` |
 
 ## Internal import graph
 

@@ -358,7 +358,9 @@ def register_messaging_tools(
         Shift+Enter so LinkedIn keeps the paragraphs inside one message. Other
         control characters are rejected. The text is read back from the
         composer and compared with the request before anything is submitted;
-        on a mismatch nothing is sent.
+        on a mismatch nothing is sent. When LinkedIn answers the submit with
+        a dialog asking to share the sender's email and phone, the dialog is
+        declined and the reply is still expected in the thread.
 
         Args:
             thread_id: LinkedIn messaging thread ID (the segment after /messaging/thread/)
@@ -373,6 +375,11 @@ def register_messaging_tools(
             reply was seen in the thread and the composer went empty.
             ``retry_safe`` is false from the moment the submit button was
             clicked; calling again while it is false can send the reply twice.
+            After a click, ``diagnostics`` says what the page showed: the
+            contact-sharing dialog and whether it was declined, the composer
+            text at the timeout and the submit button state. A
+            ``submit_ignored`` status means the click changed nothing and the
+            composer was cleared, so a retry is safe.
         """
         try:
             refusal = refuse_an_invalid_reply(thread_id, message)
