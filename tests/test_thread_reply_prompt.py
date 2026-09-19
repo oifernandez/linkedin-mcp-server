@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import Any, cast
 
 from linkedin_mcp_server.scraping import thread_reply as module
 from linkedin_mcp_server.scraping.thread_reply import (
@@ -107,7 +107,7 @@ class FakeSession:
 
 
 def observe(page: FakePage) -> dict[str, Any]:
-    replier = ThreadReplier(FakeSession(page), navigator=None)  # type: ignore[arg-type]
+    replier = ThreadReplier(cast(Any, FakeSession(page)), cast(Any, None))
     return asyncio.run(
         replier._observe_submission(FakeComposer(page), FakeButton(), MESSAGE)
     )
