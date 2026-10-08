@@ -1017,7 +1017,7 @@ class TestMessagingTools:
         assert result["status"] == "sent"
         assert result["sent"] is True
         mock_extractor.reply_to_thread.assert_awaited_once_with(
-            "2-abc", body, confirm_send=True
+            "2-abc", body, confirm_send=True, attachments=None
         )
 
     async def test_reply_to_thread_refuses_control_characters(self, mock_context):

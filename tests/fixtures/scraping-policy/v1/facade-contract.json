@@ -58,7 +58,7 @@
       },
       "reply_to_thread": {
         "coroutine": true,
-        "signature": "(self, thread_id: 'str', message: 'str', *, confirm_send: 'bool') -> 'dict[str, Any]'"
+        "signature": "(self, thread_id: 'str', message: 'str', *, confirm_send: 'bool', attachments: 'Sequence[str] | None' = None, expected_event_urn: 'str | None' = None) -> 'dict[str, Any]'"
       },
       "scrape_company": {
         "coroutine": true,
@@ -119,6 +119,57 @@
       "send_message"
     ],
     "tool_schemas": {
+      "arm_auto_send": {
+        "input": {
+          "additionalProperties": false,
+          "properties": {
+            "card_message_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "delay_minutes": {
+              "default": 30,
+              "type": "integer"
+            },
+            "preview_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "preview_id",
+            "card_message_ids"
+          ],
+          "type": "object"
+        },
+        "output": {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      },
+      "cancel_preview": {
+        "input": {
+          "additionalProperties": false,
+          "properties": {
+            "preview_id": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "preview_id",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "output": {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      },
       "close_session": {
         "input": {
           "additionalProperties": false,
@@ -462,10 +513,92 @@
           "type": "object"
         }
       },
+      "list_previews": {
+        "input": {
+          "additionalProperties": false,
+          "properties": {
+            "include_closed": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        },
+        "output": {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      },
+      "prepare_reply": {
+        "input": {
+          "additionalProperties": false,
+          "properties": {
+            "attachments": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Paths of files to attach, inside the configured\nattachment directories"
+            },
+            "counterpart": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Name of the person the reply goes to, for listings"
+            },
+            "message": {
+              "description": "Reply text; multi-line allowed",
+              "type": "string"
+            },
+            "thread_id": {
+              "description": "LinkedIn messaging thread ID",
+              "type": "string"
+            }
+          },
+          "required": [
+            "thread_id",
+            "message"
+          ],
+          "type": "object"
+        },
+        "output": {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      },
       "reply_to_thread": {
         "input": {
           "additionalProperties": false,
           "properties": {
+            "attachments": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Paths of files to attach, inside the configured\nattachment directories; each must show as attached in the\ncomposer before the submit and in the thread after it"
+            },
             "confirm_send": {
               "description": "False types, verifies, screenshots and clears the\ncomposer without sending (dry run); True sends",
               "type": "boolean"
@@ -768,6 +901,32 @@
             "linkedin_username",
             "message",
             "confirm_send"
+          ],
+          "type": "object"
+        },
+        "output": {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      },
+      "submit_preview": {
+        "input": {
+          "additionalProperties": false,
+          "properties": {
+            "confirm_send": {
+              "default": false,
+              "type": "boolean"
+            },
+            "preview_id": {
+              "type": "string"
+            },
+            "trigger": {
+              "default": "owner",
+              "type": "string"
+            }
+          },
+          "required": [
+            "preview_id"
           ],
           "type": "object"
         },

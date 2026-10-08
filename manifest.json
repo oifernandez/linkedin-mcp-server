@@ -113,7 +113,27 @@
     },
     {
       "name": "reply_to_thread",
-      "description": "Reply inside an existing LinkedIn messaging thread (InMail included) identified by thread_id, typing a multi-line message into that thread's own composer with explicit confirmation; confirm_send=False types, verifies, screenshots and clears the composer without sending"
+      "description": "Reply inside an existing LinkedIn messaging thread (InMail included) identified by thread_id, typing a multi-line message into that thread's own composer with explicit confirmation and optional file attachments from the configured attachment directories; confirm_send=False types, attaches, verifies, screenshots and clears the composer without sending"
+    },
+    {
+      "name": "prepare_reply",
+      "description": "Dry run of a thread reply with optional attachments, checked against the owner's writing rules and saved as a preview with a screenshot and the newest message it answers; nothing is sent"
+    },
+    {
+      "name": "list_previews",
+      "description": "List saved reply previews and their state: waiting, armed, sending, sent, cancelled or expired"
+    },
+    {
+      "name": "arm_auto_send",
+      "description": "Schedule the automatic send of a reply preview whose card was posted, recording the card's chat message ids"
+    },
+    {
+      "name": "cancel_preview",
+      "description": "Cancel a reply preview so it can never be sent"
+    },
+    {
+      "name": "submit_preview",
+      "description": "Send a reply preview exactly as previewed; trigger=auto only when armed and due, refused when anybody wrote in the thread after the preview"
     },
     {
       "name": "get_feed",
