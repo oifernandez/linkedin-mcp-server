@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import threading
 from pathlib import Path
 from typing import Any, Callable, Coroutine, cast
@@ -56,6 +57,9 @@ class TestAttachments:
         with pytest.raises(ValueError, match="outside"):
             resolve_attachments([str(stray)])
 
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="creating symlinks needs privileges"
+    )
     def test_symlink_out_of_the_directory_refused(
         self, attachment_dir: Path, tmp_path: Path
     ) -> None:

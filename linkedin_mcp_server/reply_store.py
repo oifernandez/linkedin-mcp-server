@@ -9,7 +9,6 @@ file lock, so the agent and the automatic sender can never both send it.
 from __future__ import annotations
 
 import contextlib
-import fcntl
 import json
 import os
 import secrets
@@ -17,6 +16,8 @@ import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
+
+from linkedin_mcp_server.profile_lease import acquire_locked_fd
 
 PREVIEW_DIR = Path(
     os.environ.get(
@@ -33,6 +34,7 @@ MIN_AUTO_DELAY_SECONDS = 5 * 60
 MAX_AUTO_DELAY_SECONDS = 12 * 3600
 
 TRIGGERS = ("owner", "auto")
+LOCK_WAIT_SECONDS = 30
 
 
 class PreviewError(ValueError):
@@ -77,13 +79,19 @@ class PreviewStore:
 
     @contextlib.contextmanager
     def _locked(self) -> Iterator[None]:
+        """Hold the store's lock file; the same primitive guards the profile,
+        so it works on every platform the server runs on."""
         self._ensure_root()
-        with open(self.root / ".lock", "a") as fh:
-            fcntl.flock(fh, fcntl.LOCK_EX)
-            try:
-                yield
-            finally:
-                fcntl.flock(fh, fcntl.LOCK_UN)
+        deadline = time.monotonic() + LOCK_WAIT_SECONDS
+        while (fd := acquire_locked_fd(self.root / ".lock", exclusive=True)) is None:
+            if time.monotonic() >= deadline:
+                raise PreviewError("the preview store is busy; try again")
+            time.sleep(0.05)
+        try:
+            yield
+        finally:
+            # Closing the descriptor releases the lock on every platform.
+            os.close(fd)
 
     def _read(self, preview_id: str) -> dict[str, Any]:
         path = self._path(preview_id)
