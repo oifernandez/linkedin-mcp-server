@@ -74,16 +74,18 @@ class TestAttachments:
             resolve_attachments([str(attachment_dir / ".." / "x.pdf")])
 
     @pytest.mark.parametrize(
-        ("name", "content", "match"),
+        ("name", "size", "match"),
         [
-            ("run.sh", b"x", "type"),
-            ("big.pdf", b"x" * (20 * 1024 * 1024 + 1), "20 MB"),
+            ("run.sh", 1, "type"),
+            ("big.pdf", 20 * 1024 * 1024 + 1, "20 MB"),
         ],
+        ids=["script", "oversized"],
     )
     def test_type_and_size(
-        self, attachment_dir: Path, name: str, content: bytes, match: str
+        self, attachment_dir: Path, name: str, size: int, match: str
     ) -> None:
-        (attachment_dir / name).write_bytes(content)
+        with (attachment_dir / name).open("wb") as fh:
+            fh.truncate(size)
         with pytest.raises(ValueError, match=match):
             resolve_attachments([str(attachment_dir / name)])
 
