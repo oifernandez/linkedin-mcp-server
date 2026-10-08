@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
 from patchright.async_api import Page
@@ -266,10 +267,14 @@ class LinkedInExtractor:
         message: str,
         *,
         confirm_send: bool,
+        attachments: Sequence[str] | None = None,
+        expected_event_urn: str | None = None,
     ) -> dict[str, Any]:
         """Reply inside an existing messaging thread with explicit confirmation gating."""
         return await self._thread_replier.reply_to_thread(
             thread_id,
             message,
             confirm_send=confirm_send,
+            attachments=attachments,
+            expected_event_urn=expected_event_urn,
         )

@@ -53,7 +53,9 @@ TOOL_DELEGATES = {
     "get_person_profile": "scrape_person",
     "get_saved_jobs": "get_saved_jobs",
     "get_sidebar_profiles": "get_sidebar_profiles",
+    "prepare_reply": "reply_to_thread",
     "reply_to_thread": "reply_to_thread",
+    "submit_preview": "reply_to_thread",
     "search_companies": "search_companies",
     "search_conversations": "search_conversations",
     "search_jobs": "search_jobs",
@@ -61,6 +63,10 @@ TOOL_DELEGATES = {
     "search_posts": "search_posts",
     "send_message": "send_message",
 }
+
+# Reply-preview bookkeeping tools read and write the preview store only;
+# they never reach the extractor.
+STORE_TOOLS = {"list_previews", "arm_auto_send", "cancel_preview"}
 
 
 async def test_constructor_export_and_dependency_use_the_same_facade(monkeypatch):
@@ -121,7 +127,7 @@ async def test_registered_tools_match_extractor_delegates():
     tools = await create_mcp_server().list_tools()
     tool_names = {tool.name for tool in tools}
 
-    assert tool_names == {*TOOL_DELEGATES, "close_session"}
+    assert tool_names == {*TOOL_DELEGATES, "close_session", *STORE_TOOLS}
     assert set(TOOL_DELEGATES.values()) == TOOL_FACADE_METHODS
     assert "close_session" not in TOOL_DELEGATES
 

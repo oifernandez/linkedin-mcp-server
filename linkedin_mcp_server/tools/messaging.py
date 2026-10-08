@@ -343,6 +343,7 @@ def register_messaging_tools(
         message: str,
         confirm_send: bool,
         ctx: Context,
+        attachments: list[str] | None = None,
         extractor: Any | None = None,
     ) -> dict[str, Any]:
         """
@@ -368,6 +369,9 @@ def register_messaging_tools(
             confirm_send: False types, verifies, screenshots and clears the
                 composer without sending (dry run); True sends
             ctx: FastMCP context for progress reporting
+            attachments: Paths of files to attach, inside the configured
+                attachment directories; each must show as attached in the
+                composer before the submit and in the thread after it
 
         Returns:
             Dict with url, thread_id, status, message, composer_text,
@@ -382,7 +386,7 @@ def register_messaging_tools(
             composer was cleared, so a retry is safe.
         """
         try:
-            refusal = refuse_an_invalid_reply(thread_id, message)
+            refusal = refuse_an_invalid_reply(thread_id, message, attachments)
             if refusal is not None:
                 return refusal
             extractor = extractor or await get_ready_extractor(
@@ -400,6 +404,7 @@ def register_messaging_tools(
                 thread_id,
                 message,
                 confirm_send=confirm_send,
+                attachments=attachments,
             )
 
             try:
